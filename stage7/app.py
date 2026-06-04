@@ -89,9 +89,9 @@ st.markdown(f"""
 # ── Data paths ─────────────────────────────────────────────────────────────────
 _HERE     = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR  = os.path.join(_HERE, 'data')
-PATH_ENG  = os.path.join(DATA_DIR, 'stage7/Data/df_engineered.csv')
-PATH_DAY  = os.path.join(DATA_DIR, 'stage7/Data/df_daily.csv')
-PATH_VP   = os.path.join(DATA_DIR, 'stage7/Data/df_video_play_clean.csv')
+PATH_ENG  = os.path.join(DATA_DIR, 'df_engineered.csv')
+PATH_DAY  = os.path.join(DATA_DIR, 'df_daily.csv')
+PATH_VP   = os.path.join(DATA_DIR, 'df_video_play_clean.csv')
 
 
 # ── Data loading ───────────────────────────────────────────────────────────────
