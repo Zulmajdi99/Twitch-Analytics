@@ -43,38 +43,46 @@ def _base(title: str, height: int = 460, t=80, b=60, l=70, r=40) -> dict:
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
 #  V1 — Viewer Lifecycle Bubble Chart
-# ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
 def build_v1_lifecycle(df: pd.DataFrame) -> go.Figure:
+    '''
+    Yearly bubble scatter: diversity x volume x depth x LoL%.
+    Compatible with st.plotly_chart(use_container_width=True).
+    '''
     annual = df.groupby('year').agg(
-        total_hours=('hours_watched', 'sum'),
-        unique_channels=('channel_name', 'nunique'),
-        avg_session_min=('minutes_watched_unadjusted', 'mean'),
-        lol_pct=('is_lol', 'mean'),
-        sessions=('channel_name', 'count'),
+        total_hours     = ('hours_watched',              'sum'),
+        unique_channels = ('channel_name',               'nunique'),
+        avg_session_min = ('minutes_watched_unadjusted', 'mean'),
+        lol_pct         = ('is_lol',                     'mean'),
+        sessions        = ('channel_name',               'count'),
     ).reset_index()
-    annual['lol_100'] = (annual['lol_pct'] * 100).round(1)
+    annual['lol_100']  = (annual['lol_pct'] * 100).round(1)
+    annual['yr_label'] = annual['year'].astype(str)
+
     xm = annual['unique_channels'].median()
     ym = annual['total_hours'].median()
 
     fig = go.Figure()
+
     for (x0, x1, y0, y1) in [
-        (0, xm, ym, annual['total_hours'].max() * 1.2),
-        (xm, annual['unique_channels'].max() * 1.2, ym, annual['total_hours'].max() * 1.2),
-        (0, xm, 0, ym),
-        (xm, annual['unique_channels'].max() * 1.2, 0, ym),
+        (0,  xm, ym, annual['total_hours'].max()*1.2),
+        (xm, annual['unique_channels'].max()*1.2, ym, annual['total_hours'].max()*1.2),
+        (0,  xm, 0, ym),
+        (xm, annual['unique_channels'].max()*1.2, 0, ym),
     ]:
         fig.add_shape(type='rect', x0=x0, x1=x1, y0=y0, y1=y1,
                       fillcolor='rgba(255,255,255,0.018)',
                       line=dict(color='rgba(255,255,255,0.07)', width=0.6))
 
-    for qx, qy, qlabel, qa in [
-        (xm * 0.04, annual['total_hours'].max() * 1.08, 'LOYALIST', 'left'),
-        (xm * 1.04, annual['total_hours'].max() * 1.08, 'PEAK EXPLORER', 'left'),
-        (xm * 0.04, ym * 0.06, 'QUIET', 'left'),
-        (xm * 1.04, ym * 0.06, 'CASUAL EXPLORER', 'left'),
-    ]:
+    _qlabels = [
+        (xm*0.04, annual['total_hours'].max()*1.08, 'LOYALIST',        'left'),
+        (xm*1.04, annual['total_hours'].max()*1.08, 'PEAK EXPLORER',   'left'),
+        (xm*0.04, ym*0.06,                          'QUIET',           'left'),
+        (xm*1.04, ym*0.06,                          'CASUAL EXPLORER', 'left'),
+    ]
+    for qx, qy, qlabel, qa in _qlabels:
         fig.add_annotation(x=qx, y=qy, text=qlabel, showarrow=False,
                            font=dict(size=9, color='rgba(255,255,255,0.18)'),
                            xanchor=qa, yanchor='top')
@@ -83,71 +91,94 @@ def build_v1_lifecycle(df: pd.DataFrame) -> go.Figure:
     fig.add_hline(y=ym, line=dict(color='rgba(255,255,255,0.13)', width=1, dash='dot'))
 
     fig.add_trace(go.Scatter(
-        x=annual['unique_channels'], y=annual['total_hours'],
-        mode='markers',
-        marker=dict(
-            size=annual['avg_session_min'] * 2.8,
-            sizemode='area',
-            sizeref=2. * annual['avg_session_min'].max() / (50. ** 2),
-            color=annual['lol_100'],
-            colorscale=[[0, BLUE], [0.35, PURPLE], [0.7, TEAL], [1, GREEN]],
-            colorbar=dict(title=dict(text='LoL %', font=dict(size=11)),
-                          ticksuffix='%', len=0.55, thickness=12, x=1.02),
-            line=dict(color='white', width=1.5), opacity=0.87,
+        x    = annual['unique_channels'],
+        y    = annual['total_hours'],
+        mode = 'markers',
+        marker = dict(
+            size     = annual['avg_session_min'] * 2.8,
+            sizemode = 'area',
+            sizeref  = 2. * annual['avg_session_min'].max() / (50.**2),
+            color    = annual['lol_100'],
+            colorscale = [[0, BLUE], [0.35, PURPLE], [0.7, TEAL], [1, GREEN]],
+            colorbar   = dict(
+                title     = dict(text='LoL %', font=dict(size=11)),
+                ticksuffix= '%', len=0.55, thickness=12, x=1.02,
+            ),
+            line    = dict(color='white', width=1.5),
+            opacity = 0.87,
         ),
-        customdata=annual[['lol_100', 'avg_session_min', 'sessions', 'total_hours']].values,
-        hovertemplate=(
-            '<b>%{customdata[3]:.0f}h · %{x} channels</b><br>'
-            'LoL: %{customdata[0]:.1f}%<br>'
-            'Avg session: %{customdata[1]:.1f} min<br>'
-            'Sessions: %{customdata[2]:,}<extra></extra>'
+        customdata = annual[['lol_100','avg_session_min','sessions','total_hours']].values,
+        hovertemplate = (
+            '<b>%{customdata[3]:.0f}h  ·  %{x} channels</b><br>'
+            'LoL content   : %{customdata[0]:.1f}%<br>'
+            'Avg session   : %{customdata[1]:.1f} min<br>'
+            'Sessions total: %{customdata[2]:,}<extra></extra>'
         ),
-        showlegend=False,
+        showlegend = False,
     ))
 
     for _, row in annual.iterrows():
-        xv, yv = float(row['unique_channels']), float(row['total_hours'])
-        h_rank = float((annual['total_hours'] < yv).sum()) / len(annual)
+        yr  = int(row['year'])
+        xv  = float(row['unique_channels'])
+        yv  = float(row['total_hours'])
+        h_rank = float((annual['total_hours']     < yv).sum()) / len(annual)
         c_rank = float((annual['unique_channels'] < xv).sum()) / len(annual)
-        ysh = -22 if h_rank >= 0.55 else 20
-        xsh = -12 if c_rank >= 0.65 else 12
+        ysh   = -22 if h_rank >= 0.55 else 20
+        xsh   = -12 if c_rank >= 0.65 else 12
         xanch = 'right' if c_rank >= 0.65 else 'left'
-        fig.add_annotation(x=xv, y=yv, text=f'<b>{int(row["year"])}</b>',
-                           showarrow=False,
-                           font=dict(size=10, color='white', family='monospace'),
-                           xshift=xsh, yshift=ysh, xanchor=xanch, yanchor='middle',
-                           bgcolor='rgba(10,10,20,0.80)', borderpad=2)
+        fig.add_annotation(
+            x=xv, y=yv, text=f'<b>{yr}</b>',
+            showarrow=False,
+            font=dict(size=10, color='white', family='monospace'),
+            xshift=xsh, yshift=ysh,
+            xanchor=xanch, yanchor='middle',
+            bgcolor='rgba(10,10,20,0.80)', borderpad=2,
+        )
 
-    r21 = annual[annual['year'] == 2021]
-    r22 = annual[annual['year'] == 2022]
+    r21 = annual[annual['year']==2021]
+    r22 = annual[annual['year']==2022]
     if len(r21) and len(r22):
-        x21, y21 = float(r21['unique_channels'].iloc[0]), float(r21['total_hours'].iloc[0])
-        x22, y22 = float(r22['unique_channels'].iloc[0]), float(r22['total_hours'].iloc[0])
-        fig.add_shape(type='line', x0=x21, y0=y21, x1=x22, y1=y22,
-                      xref='x', yref='y',
-                      line=dict(color=RED, width=2, dash='dot'), layer='below')
-        fig.add_trace(go.Scatter(x=[x22], y=[y22], mode='markers',
-                                 marker=dict(symbol='triangle-down', size=14, color=RED,
-                                             opacity=0.9, line=dict(color=RED, width=1)),
-                                 hoverinfo='skip', showlegend=False))
-    fig.add_annotation(xref='paper', yref='paper', x=0.06, y=0.86,
-                       text='Explorer \u2192 Loyalist pivot (2021\u21922022)<br>channels \u221238% \u00b7 avg session +11%',
-                       font=dict(size=8, color=RED), showarrow=False,
-                       xanchor='left', yanchor='middle',
-                       bgcolor='rgba(10,10,20,0.88)', borderpad=3,
-                       bordercolor=RED, borderwidth=0.5)
+        x21 = float(r21['unique_channels'].iloc[0])
+        y21 = float(r21['total_hours'].iloc[0])
+        x22 = float(r22['unique_channels'].iloc[0])
+        y22 = float(r22['total_hours'].iloc[0])
+        fig.add_annotation(
+            x=x22, y=y22, ax=x21, ay=y21,
+            axref='x', ayref='y',
+            arrowhead=3, arrowwidth=2.5, arrowcolor=RED,
+            text='', showarrow=True,
+        )
+        mid_x = (x21 + x22) / 2
+        mid_y = (y21 + y22) / 2
+        fig.add_annotation(
+            x=mid_x, y=mid_y,
+            ax=0, ay=42,
+            text='Explorer \u2192 Loyalist pivot<br>channels \u221238% \u00b7 avg session +11%',
+            font=dict(size=8, color=RED),
+            showarrow=True, arrowhead=2, arrowcolor=RED, arrowwidth=1.2,
+            xanchor='center', yanchor='top',
+            bgcolor='rgba(10,10,20,0.88)', borderpad=3,
+            bordercolor=RED, borderwidth=0.5,
+        )
 
     pk = annual.loc[annual['total_hours'].idxmax()]
-    fig.add_annotation(x=float(pk['unique_channels']), y=float(pk['total_hours']),
-                       ax=55, ay=-45, text=f"Peak: {float(pk['total_hours']):.0f}h",
-                       font=dict(size=9, color=GOLD), showarrow=True,
-                       arrowcolor=GOLD, arrowhead=2, arrowwidth=1.5,
-                       bgcolor='rgba(10,10,20,0.82)', borderpad=2)
+    fig.add_annotation(
+        x=float(pk['unique_channels']), y=float(pk['total_hours']),
+        ax=55, ay=-45,
+        text=f"Peak: {float(pk['total_hours']):.0f}h",
+        font=dict(size=9, color=GOLD),
+        showarrow=True, arrowcolor=GOLD, arrowhead=2, arrowwidth=1.5,
+        bgcolor='rgba(10,10,20,0.82)', borderpad=2,
+    )
 
-    fig.update_layout(**_base('\U0001fab7 V1 \u2014 Viewer Lifecycle (bubble = avg session depth)',
-                              height=530, t=80, b=65, l=75, r=120))
-    fig.update_xaxes(title_text='Unique Channels Watched / Year', showgrid=True, gridcolor=GRID, zeroline=False)
-    fig.update_yaxes(title_text='Total Hours Watched / Year', showgrid=True, gridcolor=GRID, zeroline=False)
+    fig.update_layout(**_base(
+        '\U0001fab7 V1 \u2014 Viewer Lifecycle (bubble size = avg session depth)',
+        height=530, t=80, b=65, l=75, r=120
+    ))
+    fig.update_xaxes(title_text='Unique Channels Watched / Year',
+                     showgrid=True, gridcolor=GRID, zeroline=False)
+    fig.update_yaxes(title_text='Total Hours Watched / Year',
+                     showgrid=True, gridcolor=GRID, zeroline=False)
     return fig
 
 
