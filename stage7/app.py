@@ -88,7 +88,7 @@ st.markdown(f"""
 
 # ── Data paths ─────────────────────────────────────────────────────────────────
 _HERE     = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR  = os.path.join(_HERE, 'data')
+DATA_DIR  = os.path.join(_HERE, 'Data')
 PATH_ENG  = os.path.join(DATA_DIR, 'df_engineered.csv')
 PATH_DAY  = os.path.join(DATA_DIR, 'df_daily.csv')
 PATH_VP   = os.path.join(DATA_DIR, 'df_video_play_clean.csv')
